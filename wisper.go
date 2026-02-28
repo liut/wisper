@@ -6,21 +6,26 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/liut/wisper/engine"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// Config for the web search server
+// Config for the web search server.
+// Can be loaded from environment variables using ProcessConfig.
 type Config struct {
-	SearchXNGURL  string // SearXNG base URL (e.g., https://searchx.ng)
-	GoogleAPIKey  string // Google Custom Search API key
-	GoogleCX      string // Google Search Engine ID
-	BingAPIKey    string // Bing Search API key
-	MaxResults    int    // Default max results
-	DefaultEngine string // Default search engine
+	SearchXNGURL  string `envconfig:"SEARCHXNG_URL"`   // SearXNG base URL (e.g., https://searchx.ng)
+	GoogleAPIKey  string `envconfig:"GOOGLE_API_KEY"`  // Google Custom Search API key
+	GoogleCX      string `envconfig:"GOOGLE_CX"`       // Google Search Engine ID
+	BingAPIKey    string `envconfig:"BING_API_KEY"`     // Bing Search API key
+	MaxResults    int    `envconfig:"MAX_RESULTS"`      // Default max results (default: 10)
+	DefaultEngine string `envconfig:"DEFAULT_ENGINE"`   // Default search engine
+	ListenAddr    string `envconfig:"LISTEN_ADDR"`      // HTTP listen address for SSE mode
 }
 
 // WebSearchServer represents the MCP web search server
@@ -521,4 +526,66 @@ func MustNewWebSearchServer(searchXNGURL string, maxResults int) *WebSearchServe
 		MaxResults:   maxResults,
 	}
 	return NewWebSearchServer(config)
+}
+
+// ProcessConfig loads configuration from environment variables with the given prefix.
+// The prefix is used to form environment variable names (e.g., PREFIX_SEARCHXNG_URL).
+// If prefix is empty, uses "WISPER" as default.
+func ProcessConfig(prefix string) (*Config, error) {
+	if prefix == "" {
+		prefix = "WISPER"
+	}
+	prefix = strings.ToUpper(prefix) + "_"
+
+	cfg := &Config{
+		MaxResults: 10, // default value
+	}
+
+	// Helper to get optional env var
+	getEnv := func(key string) string {
+		return os.Getenv(prefix + key)
+	}
+
+	// Load string values
+	cfg.SearchXNGURL = getEnv("SEARCHXNG_URL")
+	cfg.GoogleAPIKey = getEnv("GOOGLE_API_KEY")
+	cfg.GoogleCX = getEnv("GOOGLE_CX")
+	cfg.BingAPIKey = getEnv("BING_API_KEY")
+	cfg.DefaultEngine = getEnv("DEFAULT_ENGINE")
+	cfg.ListenAddr = getEnv("LISTEN_ADDR")
+
+	// Load int value
+	if maxResultsStr := getEnv("MAX_RESULTS"); maxResultsStr != "" {
+		maxResults, err := strconv.Atoi(maxResultsStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid value for %sMAX_RESULTS: %w", prefix, err)
+		}
+		cfg.MaxResults = maxResults
+	}
+
+	return cfg, nil
+}
+
+// LookupConfig loads configuration from environment variables (alias for ProcessConfig).
+func LookupConfig(prefix string) (*Config, error) {
+	return ProcessConfig(prefix)
+}
+
+// UsageString returns a usage string for the environment variables.
+func UsageString(prefix string) string {
+	if prefix == "" {
+		prefix = "WISPER"
+	}
+	prefix = strings.ToUpper(prefix) + "_"
+
+	return fmt.Sprintf(`
+Environment Variables:
+  %sSEARCHXNG_URL     SearXNG base URL (e.g., https://searchx.ng)
+  %sGOOGLE_API_KEY    Google Custom Search API key
+  %sGOOGLE_CX         Google Search Engine ID
+  %sBING_API_KEY      Bing Search API key
+  %sMAX_RESULTS       Maximum number of search results (default: 10)
+  %sDEFAULT_ENGINE    Default search engine (e.g., google, bing, searchxng, arxiv)
+  %sLISTEN_ADDR       HTTP listen address for SSE mode (e.g., localhost:8080)
+`, prefix, prefix, prefix, prefix, prefix, prefix, prefix)
 }
