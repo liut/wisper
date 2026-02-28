@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -56,8 +57,18 @@ It supports multiple search engines including SearXNG, Google, Bing, and Arxiv.`
 		Run:   runStdioCommand,
 	}
 
+	// gen-cfg subcommand
+	genCfgCmd := &cobra.Command{
+		Use:   "gen-cfg",
+		Short: "Generate default config file",
+		Long:  "Generate a default config file at ~/.wisper/config.json",
+		Run:   runGenCfgCommand,
+	}
+	genCfgCmd.Flags().StringP("output", "o", "", "Output path (default: ~/.wisper/config.json)")
+
 	rootCmd.AddCommand(webCmd)
 	rootCmd.AddCommand(stdCmd)
+	rootCmd.AddCommand(genCfgCmd)
 
 	// Execute
 	if err := rootCmd.Execute(); err != nil {
@@ -130,6 +141,59 @@ func runWebCommand(cmd *cobra.Command, args []string) {
 
 func runStdioCommand(cmd *cobra.Command, args []string) {
 	runStdioServer()
+}
+
+func runGenCfgCommand(cmd *cobra.Command, args []string) {
+	outputPath, _ := cmd.Flags().GetString("output")
+
+	if outputPath == "" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: cannot find home directory: %v\n", err)
+			os.Exit(1)
+		}
+		outputPath = filepath.Join(homeDir, ".wisper", "config.json")
+	}
+
+	// Create directory if not exists
+	dir := filepath.Dir(outputPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: cannot create directory: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Check if file already exists
+	if _, err := os.Stat(outputPath); err == nil {
+		fmt.Printf("Config file already exists: %s\n", outputPath)
+		fmt.Print("Overwrite? (y/N): ")
+		var confirm string
+		fmt.Scanln(&confirm)
+		if strings.ToLower(confirm) != "y" {
+			fmt.Println("Aborted.")
+			os.Exit(0)
+		}
+	}
+
+	// Generate default config
+	defaultConfig := `{
+  "searchxng_url": "",
+  "google_api_key": "",
+  "google_cx": "",
+  "bing_api_key": "",
+  "max_results": 10,
+  "default_engine": "",
+  "listen_addr": "localhost:8080",
+  "uri_prefix": "",
+  "log_level": "info"
+}
+`
+
+	if err := os.WriteFile(outputPath, []byte(defaultConfig), 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: cannot write config file: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Config file created: %s\n", outputPath)
 }
 
 func startHTTPServer(config *server.Config) {
