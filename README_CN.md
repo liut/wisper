@@ -135,26 +135,6 @@ Wisper 提供三个 MCP 工具：
 3. 配置文件
 4. 默认值
 
-## 项目结构
-
-```
-wisper/
-├── main.go              # 入口点，包含 CLI 命令
-├── server/              # MCP 服务器实现
-│   ├── server.go        # 服务器配置和逻辑
-│   ├── handlers.go      # 工具处理器
-│   ├── mcp.go          # MCP 服务器设置
-│   ├── params.go        # 工具参数
-│   └── response.go      # 响应类型
-└── engine/             # 搜索引擎实现
-    ├── types.go        # 引擎接口
-    ├── searchxng.go    # SearXNG 引擎
-    ├── google.go       # Google 引擎
-    ├── bing.go         # Bing 引擎
-    ├── bingcn.go       # Bing 中国引擎
-    └── arxiv.go        # Arxiv 学术引擎
-```
-
 ## 许可证
 
 MIT

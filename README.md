@@ -135,26 +135,6 @@ Configuration priority (highest to lowest):
 3. Config file
 4. Default values
 
-## Project Structure
-
-```
-wisper/
-├── main.go              # Entry point with CLI commands
-├── server/              # MCP server implementation
-│   ├── server.go        # Server config and logic
-│   ├── handlers.go      # Tool handlers
-│   ├── mcp.go          # MCP server setup
-│   ├── params.go        # Tool parameters
-│   └── response.go      # Response types
-└── engine/             # Search engine implementations
-    ├── types.go        # Engine interface
-    ├── searchxng.go    # SearXNG engine
-    ├── google.go       # Google engine
-    ├── bing.go         # Bing engine
-    ├── bingcn.go       # Bing CN engine
-    └── arxiv.go        # Arxiv academic engine
-```
-
 ## License
 
 MIT
