@@ -42,20 +42,20 @@ wisper
 启动 Web 服务器：
 
 ```bash
-wisper web --listen localhost:8080
+wisper web --listen localhost:8087
 ```
 
 服务器提供两个端点：
-- HTTP: `http://localhost:8080/mcp`
-- SSE: `http://localhost:8080/mcp/sse`
+- HTTP: `http://localhost:8087/mcp`
+- SSE: `http://localhost:8087/mcp/sse`
 
 使用 URI 前缀：
 ```bash
-wisper web --listen localhost:8080 --uri-prefix /api
+wisper web --listen localhost:8087 --uri-prefix /api
 ```
 端点变为：
-- HTTP: `http://localhost:8080/api/mcp`
-- SSE: `http://localhost:8080/api/mcp/sse`
+- HTTP: `http://localhost:8087/api/mcp`
+- SSE: `http://localhost:8087/api/mcp/sse`
 
 ## MCP 工具
 
@@ -108,7 +108,7 @@ Wisper 提供三个 MCP 工具：
   "brave_api_key": "your-brave-api-key",
   "max_results": 10,
   "default_engine": "searchxng",
-  "listen_addr": "localhost:8080",
+  "listen_addr": "localhost:8087",
   "uri_prefix": "",
   "log_level": "info"
 }

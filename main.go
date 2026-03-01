@@ -46,7 +46,7 @@ It supports multiple search engines including SearXNG, Google, Bing, and Arxiv.`
 		Long:  "Start the MCP server over HTTP and SSE (Server-Sent Events)",
 		Run:   runWebCommand,
 	}
-	webCmd.Flags().StringP("listen", "l", "", "HTTP listen address (e.g., localhost:8080)")
+	webCmd.Flags().StringP("listen", "l", "", "HTTP listen address (e.g., localhost:8087)")
 	viper.BindPFlag("listen_addr", webCmd.Flags().Lookup("listen"))
 
 	// std subcommand
@@ -183,7 +183,7 @@ func runGenCfgCommand(cmd *cobra.Command, args []string) {
   "brave_api_key": "",
   "max_results": 10,
   "default_engine": "",
-  "listen_addr": "localhost:8080",
+  "listen_addr": "localhost:8087",
   "uri_prefix": "",
   "log_level": "info"
 }

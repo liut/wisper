@@ -42,20 +42,20 @@ wisper
 Start the web server:
 
 ```bash
-wisper web --listen localhost:8080
+wisper web --listen localhost:8087
 ```
 
 The server provides two endpoints:
-- HTTP: `http://localhost:8080/mcp`
-- SSE: `http://localhost:8080/mcp/sse`
+- HTTP: `http://localhost:8087/mcp`
+- SSE: `http://localhost:8087/mcp/sse`
 
 With URI prefix:
 ```bash
-wisper web --listen localhost:8080 --uri-prefix /api
+wisper web --listen localhost:8087 --uri-prefix /api
 ```
 Endpoints become:
-- HTTP: `http://localhost:8080/api/mcp`
-- SSE: `http://localhost:8080/api/mcp/sse`
+- HTTP: `http://localhost:8087/api/mcp`
+- SSE: `http://localhost:8087/api/mcp/sse`
 
 ## MCP Tools
 
@@ -108,7 +108,7 @@ Create `~/.wisper/config.json`:
   "brave_api_key": "your-brave-api-key",
   "max_results": 10,
   "default_engine": "searchxng",
-  "listen_addr": "localhost:8080",
+  "listen_addr": "localhost:8087",
   "uri_prefix": "",
   "log_level": "info"
 }
