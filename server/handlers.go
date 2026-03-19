@@ -14,7 +14,7 @@ import (
 )
 
 // handleWebSearch handles the web_search tool
-func (s *WebSearchServer) handleWebSearch(ctx context.Context, params WebSearchParams) (*mcp.CallToolResult, error) {
+func (s *WebServer) handleWebSearch(ctx context.Context, params WebSearchParams) (*mcp.CallToolResult, error) {
 	if params.Query == "" {
 		return nil, errors.New("query is required")
 	}
@@ -75,7 +75,7 @@ func (s *WebSearchServer) handleWebSearch(ctx context.Context, params WebSearchP
 }
 
 // handleMultiSearch handles the multi_search tool
-func (s *WebSearchServer) handleMultiSearch(ctx context.Context, params MultiSearchParams) (*mcp.CallToolResult, error) {
+func (s *WebServer) handleMultiSearch(ctx context.Context, params MultiSearchParams) (*mcp.CallToolResult, error) {
 	if params.Query == "" {
 		return nil, errors.New("query is required")
 	}
@@ -143,7 +143,7 @@ func (s *WebSearchServer) handleMultiSearch(ctx context.Context, params MultiSea
 }
 
 // handleSmartSearch handles the smart_search tool
-func (s *WebSearchServer) handleSmartSearch(ctx context.Context, params SmartSearchParams) (*mcp.CallToolResult, error) {
+func (s *WebServer) handleSmartSearch(ctx context.Context, params SmartSearchParams) (*mcp.CallToolResult, error) {
 	if params.Question == "" {
 		return nil, errors.New("question is required")
 	}

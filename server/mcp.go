@@ -9,7 +9,7 @@ import (
 )
 
 // CreateMcpServer creates the MCP server with tools
-func (s *WebSearchServer) CreateMcpServer() *mcp.Server {
+func (s *WebServer) CreateMcpServer() *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    "webpawm",
 		Version: "1.0.0",
@@ -114,11 +114,45 @@ func (s *WebSearchServer) CreateMcpServer() *mcp.Server {
 		return result, nil, err
 	})
 
+	// Add web_fetch tool
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "web_fetch",
+		Description: "Fetch a website and return its content. Supports HTML to Markdown conversion for readability.",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"url": map[string]any{
+					"type":        "string",
+					"description": "URL of the website to fetch",
+				},
+				"max_length": map[string]any{
+					"type":        "integer",
+					"description": "Maximum number of characters to return (default: 5000)",
+					"minimum":     1,
+					"maximum":     999999,
+				},
+				"start_index": map[string]any{
+					"type":        "integer",
+					"description": "Start content from this character index (default: 0)",
+					"minimum":     0,
+				},
+				"raw": map[string]any{
+					"type":        "boolean",
+					"description": "If true, returns the raw HTML including <script> and <style> blocks (default: false)",
+				},
+			},
+			"required": []string{"url"},
+		},
+	}, func(ctx context.Context, req *mcp.CallToolRequest, params WebFetchParams) (*mcp.CallToolResult, any, error) {
+		result, err := s.handleWebFetch(ctx, params)
+		return result, nil, err
+	})
+
 	return server
 }
 
 // Run starts the MCP server over SSE
-func (s *WebSearchServer) Run(addr string) error {
+func (s *WebServer) Run(addr string) error {
 	mcpServer := s.CreateMcpServer()
 
 	handler := mcp.NewSSEHandler(func(request *http.Request) *mcp.Server {

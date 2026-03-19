@@ -22,15 +22,15 @@ type Config struct {
 	LogLevel      string `mapstructure:"log_level" envconfig:"LOG_LEVEL"`             // Log level: debug, info, warn, error (default: info)
 }
 
-// WebSearchServer represents the MCP web search server
-type WebSearchServer struct {
+// WebServer represents the MCP web search server
+type WebServer struct {
 	engines       map[string]engine.Engine
 	defaultEngine string
 	maxResults    int
 }
 
-// NewWebSearchServer creates a new web search server
-func NewWebSearchServer(config Config) *WebSearchServer {
+// NewWebServer creates a new web search server
+func NewWebServer(config Config) *WebServer {
 	engines := make(map[string]engine.Engine)
 
 	// Add Google engine if configured
@@ -72,20 +72,20 @@ func NewWebSearchServer(config Config) *WebSearchServer {
 		maxResults = 10
 	}
 
-	return &WebSearchServer{
+	return &WebServer{
 		engines:       engines,
 		defaultEngine: defaultEngine,
 		maxResults:    maxResults,
 	}
 }
 
-// MustNewWebSearchServer creates a new web search server with error handling
-func MustNewWebSearchServer(searchXNGURL string, maxResults int) *WebSearchServer {
+// MustNewWebServer creates a new web search server with error handling
+func MustNewWebServer(searchXNGURL string, maxResults int) *WebServer {
 	config := Config{
 		SearchXNGURL: searchXNGURL,
 		MaxResults:   maxResults,
 	}
-	return NewWebSearchServer(config)
+	return NewWebServer(config)
 }
 
 // searchQuery represents a search query with parameters
@@ -135,7 +135,7 @@ func generateSearchQueries(question, depth string) []searchQuery {
 }
 
 // determineEngine selects the appropriate search engine for a query
-func (s *WebSearchServer) determineEngine(queryType string, includeAcademic bool) string {
+func (s *WebServer) determineEngine(queryType string, includeAcademic bool) string {
 	if queryType == "academic" && includeAcademic {
 		if _, ok := s.engines["arxiv"]; ok {
 			return "arxiv"
@@ -154,7 +154,7 @@ func (s *WebSearchServer) determineEngine(queryType string, includeAcademic bool
 }
 
 // removeDuplicates removes duplicate search results based on URL
-func (s *WebSearchServer) removeDuplicates(results []engine.SearchResult) []engine.SearchResult {
+func (s *WebServer) removeDuplicates(results []engine.SearchResult) []engine.SearchResult {
 	seen := make(map[string]bool, len(results))
 	var unique []engine.SearchResult
 
@@ -169,7 +169,7 @@ func (s *WebSearchServer) removeDuplicates(results []engine.SearchResult) []engi
 }
 
 // getAvailableEngines returns a list of available search engine names
-func (s *WebSearchServer) getAvailableEngines() []string {
+func (s *WebServer) getAvailableEngines() []string {
 	names := make([]string, 0, len(s.engines))
 	for name := range s.engines {
 		names = append(names, name)

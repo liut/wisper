@@ -216,7 +216,7 @@ func startHTTPServer(config *server.Config) {
 	// Setup logger based on LogLevel
 	logger := setupLogger(config.LogLevel)
 
-	server := server.NewWebSearchServer(*config)
+	server := server.NewWebServer(*config)
 	mcpServer := server.CreateMcpServer()
 
 	// Create handlers for different transport modes
@@ -321,11 +321,11 @@ func (rw *responseWriter) WriteHeader(code int) {
 
 func runStdioServer() {
 	config := getConfig()
-	server := server.NewWebSearchServer(*config)
+	server := server.NewWebServer(*config)
 	startStdioServer(server)
 }
 
-func startStdioServer(server *server.WebSearchServer) {
+func startStdioServer(server *server.WebServer) {
 	mcpServer := server.CreateMcpServer()
 
 	fmt.Printf("Starting Webpawm MCP server (stdio mode)...\n")

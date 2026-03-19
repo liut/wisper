@@ -13,7 +13,8 @@ GO=$(shell which go)
 GOMOD=$(shell echo "$${GO111MODULE:-auto}")
 
 main:
-	GO111MODULE=$(GOMOD) $(GO) build -ldflags "$(LDFLAGS) -s -w" -o $(NAME) .
+	mkdir -p dist
+	GO111MODULE=$(GOMOD) $(GO) build -ldflags "$(LDFLAGS) -s -w" -o dist/$(NAME) .
 
 all: dist
 
@@ -34,6 +35,9 @@ dist/darwin_arm64/$(NAME):
 dist/windows_amd64/$(NAME).exe:
 	mkdir -p dist/windows_amd64
 	GO111MODULE=$(GOMOD) GOOS=windows GOARCH=amd64 $(GO) build -ldflags "$(LDFLAGS) -s -w" -o $@ .
+
+package: dist/linux_amd64/$(NAME)
+	tar -cvJf $(NAME)-linux-amd64-$(TAG).tar.xz -C dist/linux_amd64 $(NAME)
 
 clean:
 	rm -rf dist

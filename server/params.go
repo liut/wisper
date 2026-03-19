@@ -22,3 +22,11 @@ type SmartSearchParams struct {
 	SearchDepth     string `json:"search_depth"`
 	IncludeAcademic bool   `json:"include_academic"`
 }
+
+// WebFetchParams represents the parameters for web_fetch tool
+type WebFetchParams struct {
+	URL       string `json:"url"`
+	MaxLength int    `json:"max_length"`
+	StartIndex int   `json:"start_index"`
+	Raw       bool   `json:"raw"`
+}
