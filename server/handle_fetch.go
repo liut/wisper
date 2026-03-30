@@ -13,7 +13,6 @@ import (
 	nurl "net/url"
 
 	htmd "github.com/JohannesKaufmann/html-to-markdown"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	readeck "codeberg.org/readeck/go-readability/v2"
 )
 
@@ -22,7 +21,7 @@ const defaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/
 var converter = htmd.NewConverter("", true, nil)
 
 // handleWebFetch handles the web_fetch tool
-func (s *WebServer) handleWebFetch(ctx context.Context, params WebFetchParams) (*mcp.CallToolResult, error) {
+func (s *WebServer) handleWebFetch(ctx context.Context, params WebFetchParams) (*webFetchOutput, error) {
 	if params.URL == "" {
 		return nil, errors.New("url is required")
 	}
@@ -43,11 +42,7 @@ func (s *WebServer) handleWebFetch(ctx context.Context, params WebFetchParams) (
 	content, prefix, err := fetchURL(ctx, params.URL, defaultUserAgent, params.Raw)
 	if err != nil {
 		slog.Warn("fetch failed", "url", params.URL, "error", err)
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{Text: fmt.Sprintf("Error fetching URL: %v", err)},
-			},
-		}, nil
+		return &webFetchOutput{Text: fmt.Sprintf("Error fetching URL: %v", err)}, nil
 	}
 
 	// Handle truncation
@@ -72,11 +67,7 @@ func (s *WebServer) handleWebFetch(ctx context.Context, params WebFetchParams) (
 
 	resultText := fmt.Sprintf("%s\nContents of %s:\n%s", prefix, params.URL, content)
 
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{Text: resultText},
-		},
-	}, nil
+	return &webFetchOutput{Text: resultText}, nil
 }
 
 // extractContentFromHTML extracts text from HTML and converts to Markdown

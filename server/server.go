@@ -150,6 +150,8 @@ func (s *WebServer) removeDuplicates(results []engine.SearchResult) []engine.Sea
 }
 
 // getAvailableEngines returns a list of available search engine names
+//
+//nolint:unused // kept for future use with dynamic engine selection
 func (s *WebServer) getAvailableEngines() []string {
 	names := make([]string, 0, len(s.engines))
 	for name := range s.engines {

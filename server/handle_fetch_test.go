@@ -8,8 +8,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func TestHandleWebFetch_URLValidation(t *testing.T) {
@@ -112,7 +110,7 @@ func TestHandleWebFetch_SuccessfulFetch(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Hello, World!")) //nolint
+		_, _ = w.Write([]byte("Hello, World!"))
 	}))
 	defer server.Close()
 
@@ -130,17 +128,8 @@ func TestHandleWebFetch_SuccessfulFetch(t *testing.T) {
 		t.Fatal("expected result, got nil")
 	}
 
-	if len(result.Content) != 1 {
-		t.Fatalf("expected 1 content item, got %d", len(result.Content))
-	}
-
-	textContent, ok := result.Content[0].(*mcp.TextContent)
-	if !ok {
-		t.Fatal("expected TextContent")
-	}
-
-	if !strings.Contains(textContent.Text, "Hello, World!") {
-		t.Errorf("expected content to contain 'Hello, World!', got: %s", textContent.Text)
+	if !strings.Contains(result.Text, "Hello, World!") {
+		t.Errorf("expected content to contain 'Hello, World!', got: %s", result.Text)
 	}
 }
 
@@ -150,7 +139,7 @@ func TestHandleWebFetch_Truncation(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("This is a very long content that should be truncated.")) //nolint
+		_, _ = w.Write([]byte("This is a very long content that should be truncated."))
 	}))
 	defer server.Close()
 
@@ -164,9 +153,8 @@ func TestHandleWebFetch_Truncation(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	textContent := result.Content[0].(*mcp.TextContent)
-	if !strings.Contains(textContent.Text, "Content truncated") {
-		t.Errorf("expected truncation message, got: %s", textContent.Text)
+	if !strings.Contains(result.Text, "Content truncated") {
+		t.Errorf("expected truncation message, got: %s", result.Text)
 	}
 }
 
@@ -176,7 +164,7 @@ func TestHandleWebFetch_StartIndexBeyondContent(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Short content")) //nolint
+		_, _ = w.Write([]byte("Short content"))
 	}))
 	defer server.Close()
 
@@ -191,9 +179,8 @@ func TestHandleWebFetch_StartIndexBeyondContent(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	textContent := result.Content[0].(*mcp.TextContent)
-	if !strings.Contains(textContent.Text, "No more content available") {
-		t.Errorf("expected 'No more content available' message, got: %s", textContent.Text)
+	if !strings.Contains(result.Text, "No more content available") {
+		t.Errorf("expected 'No more content available' message, got: %s", result.Text)
 	}
 }
 
@@ -214,9 +201,8 @@ func TestHandleWebFetch_HTTPError(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	textContent := result.Content[0].(*mcp.TextContent)
-	if !strings.Contains(textContent.Text, "HTTP 404") && !strings.Contains(textContent.Text, "Error fetching URL") {
-		t.Errorf("expected error message in response, got: %s", textContent.Text)
+	if !strings.Contains(result.Text, "HTTP 404") && !strings.Contains(result.Text, "Error fetching URL") {
+		t.Errorf("expected error message in response, got: %s", result.Text)
 	}
 }
 
@@ -226,7 +212,7 @@ func TestHandleWebFetch_RawHTML(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("<html><body><p>Hello, World!</p></body></html>")) //nolint
+		_, _ = w.Write([]byte("<html><body><p>Hello, World!</p></body></html>"))
 	}))
 	defer server.Close()
 
@@ -240,9 +226,8 @@ func TestHandleWebFetch_RawHTML(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	textContent := result.Content[0].(*mcp.TextContent)
-	if !strings.Contains(textContent.Text, "raw content") {
-		t.Errorf("expected 'raw content' in response for raw mode, got: %s", textContent.Text)
+	if !strings.Contains(result.Text, "raw content") {
+		t.Errorf("expected 'raw content' in response for raw mode, got: %s", result.Text)
 	}
 }
 
@@ -252,7 +237,7 @@ func TestHandleWebFetch_ConvertedHTML(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("<html><body><h1>Test Page</h1><p>This is a test paragraph with some content.</p></body></html>")) //nolint
+		_, _ = w.Write([]byte("<html><body><h1>Test Page</h1><p>This is a test paragraph with some content.</p></body></html>"))
 	}))
 	defer server.Close()
 
@@ -266,9 +251,8 @@ func TestHandleWebFetch_ConvertedHTML(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	textContent := result.Content[0].(*mcp.TextContent)
-	if !strings.Contains(textContent.Text, "Markdown") {
-		t.Errorf("expected 'Markdown' prefix for converted content, got: %s", textContent.Text)
+	if !strings.Contains(result.Text, "Markdown") {
+		t.Errorf("expected 'Markdown' prefix for converted content, got: %s", result.Text)
 	}
 }
 

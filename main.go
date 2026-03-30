@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -13,7 +12,7 @@ import (
 	"time"
 
 	"github.com/liut/webpawm/server"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
+	mcpserver "github.com/mark3labs/mcp-go/server"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -216,17 +215,11 @@ func startHTTPServer(config *server.Config) {
 	// Setup logger based on LogLevel
 	logger := setupLogger(config.LogLevel)
 
-	server := server.NewWebServer(*config)
-	mcpServer := server.CreateMcpServer()
+	srv := server.NewWebServer(*config)
+	mcpServer := srv.CreateMcpServer()
 
-	// Create handlers for different transport modes
-	sseHandler := mcp.NewSSEHandler(func(request *http.Request) *mcp.Server {
-		return mcpServer
-	}, nil)
-
-	httpHandler := mcp.NewStreamableHTTPHandler(func(request *http.Request) *mcp.Server {
-		return mcpServer
-	}, nil)
+	// Create HTTP/SSE server
+	httpServer := mcpserver.NewStreamableHTTPServer(mcpServer)
 
 	// Use ServeMux to handle different paths
 	mux := http.NewServeMux()
@@ -234,11 +227,9 @@ func startHTTPServer(config *server.Config) {
 
 	// HTTP mode endpoint: prefix/mcp
 	if uriPrefix != "" {
-		mux.Handle(uriPrefix+"/mcp", httpHandler)
-		mux.Handle(uriPrefix+"/mcp/sse", sseHandler)
+		mux.Handle(uriPrefix+"/mcp", httpServer)
 	} else {
-		mux.Handle("/mcp", httpHandler)
-		mux.Handle("/mcp/sse", sseHandler)
+		mux.Handle("/mcp", httpServer)
 	}
 
 	// Wrap with logging middleware
@@ -253,7 +244,6 @@ func startHTTPServer(config *server.Config) {
 	fmt.Printf("Starting Webpawm MCP server (HTTP and SSE mode)...\n")
 	fmt.Printf("  Listen: %s\n", config.ListenAddr)
 	fmt.Printf("  HTTP endpoint: http://%s/mcp\n", httpEndpoint)
-	fmt.Printf("  SSE endpoint:  http://%s/mcp/sse\n", httpEndpoint)
 	fmt.Printf("  Log Level: %s\n", config.LogLevel)
 	fmt.Printf("  SearXNG: %s\n", config.SearchXNGURL)
 	googleEnabled := config.GoogleAPIKey != "" && config.GoogleCX != ""
@@ -321,16 +311,16 @@ func (rw *responseWriter) WriteHeader(code int) {
 
 func runStdioServer() {
 	config := getConfig()
-	server := server.NewWebServer(*config)
-	startStdioServer(server)
+	srv := server.NewWebServer(*config)
+	startStdioServer(srv)
 }
 
-func startStdioServer(server *server.WebServer) {
-	mcpServer := server.CreateMcpServer()
+func startStdioServer(srv *server.WebServer) {
+	mcpServer := srv.CreateMcpServer()
 
 	fmt.Printf("Starting Webpawm MCP server (stdio mode)...\n")
 
-	if err := mcpServer.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
+	if err := mcpserver.ServeStdio(mcpServer); err != nil {
 		log.Printf("Server error: %v", err)
 	}
 }

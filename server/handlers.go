@@ -10,11 +10,10 @@ import (
 	"time"
 
 	"github.com/liut/webpawm/engine"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // handleWebSearch handles the unified web_search tool
-func (s *WebServer) handleWebSearch(ctx context.Context, params WebSearchParams) (*mcp.CallToolResult, error) {
+func (s *WebServer) handleWebSearch(ctx context.Context, params WebSearchParams) (*webSearchOutput, error) {
 	if params.Query == "" {
 		return nil, errors.New("query is required")
 	}
@@ -47,11 +46,7 @@ func (s *WebServer) handleWebSearch(ctx context.Context, params WebSearchParams)
 		return nil, fmt.Errorf("failed to marshal response: %w", err)
 	}
 
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{Text: string(responseJSON)},
-		},
-	}, nil
+	return &webSearchOutput{Text: string(responseJSON)}, nil
 }
 
 // resolveEngines determines which engines to use based on params
