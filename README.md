@@ -8,8 +8,7 @@ Webpawm is an MCP (Model Context Protocol) server that provides web search capab
 - **Multiple Transport Modes**:
   - HTTP/SSE mode (via `webpawm web` command)
   - Stdio mode (via `webpawm` or `webpawm std` command)
-- **Smart Search**: Intelligent query optimization with result aggregation
-- **Multi-Engine Search**: Search across multiple engines simultaneously
+- **Unified Search**: Single `web_search` tool with smart defaults (multi-engine, query expansion, deduplication)
 - **Flexible Configuration**: Support for config file (~/.webpawm/config.json) and environment variables
 - **Access Logging**: Built-in slog-based HTTP access logging
 
@@ -59,39 +58,37 @@ Endpoints become:
 
 ## MCP Tools
 
-Webpawm provides three MCP tools:
+Webpawm provides two MCP tools:
 
 ### web_search
 
-Search the web using a single search engine.
+Unified search tool with intelligent defaults. Supports single engine, multi-engine parallel search, and automatic query expansion with deduplication.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | query | string | The search query (required) |
-| engine | string | Search engine to use (optional) |
-| max_results | integer | Maximum results (1-50, default: 10) |
-| language | string | Language code (e.g., 'en', 'zh') |
-| arxiv_category | string | Arxiv category for academic papers |
+| engine | string | Single search engine to use (optional, mutually exclusive with engines) |
+| engines | array | List of search engines to use (optional, mutually exclusive with engine) |
+| max_results | integer | Maximum results to return (default: 10) |
+| language | string | Language code for search results (e.g., 'en', 'zh') |
+| arxiv_category | string | Arxiv category for academic paper search (e.g., 'cs.AI', 'math.CO') |
+| search_depth | string | 'quick' (1 query), 'normal' (2 queries), 'deep' (3 queries). Default: 'normal' |
+| include_academic | boolean | Include academic papers from Arxiv (default: false) |
+| auto_query_expand | boolean | Automatically expand query with variations (default: true) |
+| auto_deduplicate | boolean | Automatically deduplicate results by URL (default: true) |
 
-### multi_search
+**Note**: `engine` and `engines` support enum values - available engines are listed in the tool schema.
 
-Search across multiple search engines simultaneously.
+### web_fetch
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| query | string | The search query (required) |
-| engines | array | List of search engines (optional) |
-| max_results_per_engine | integer | Max results per engine (1-20, default: 5) |
-
-### smart_search
-
-Intelligently search with query optimization and result aggregation.
+Fetch a website and return its content with HTML to Markdown conversion.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| question | string | User's question or search intent (required) |
-| search_depth | string | 'quick', 'normal', or 'deep' |
-| include_academic | boolean | Include academic papers from Arxiv |
+| url | string | URL of the website to fetch (required) |
+| max_length | integer | Maximum number of characters to return (default: 5000) |
+| start_index | integer | Start content from this character index (default: 0) |
+| raw | boolean | Return raw HTML including script and style blocks (default: false) |
 
 ## Configuration
 
