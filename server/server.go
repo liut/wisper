@@ -20,6 +20,7 @@ type Config struct {
 	ListenAddr    string `mapstructure:"listen_addr" envconfig:"LISTEN_ADDR"`       // HTTP listen address
 	URIPrefix     string `mapstructure:"uri_prefix" envconfig:"URI_PREFIX"`         // URI prefix for HTTP endpoints
 	LogLevel      string `mapstructure:"log_level" envconfig:"LOG_LEVEL"`           // Log level: debug, info, warn, error (default: info)
+	APIKey        string `mapstructure:"api_key" envconfig:"API_KEY"`               // API Key for HTTP endpoint authentication
 }
 
 // WebServer represents the MCP web search server

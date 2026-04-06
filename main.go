@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"log"
@@ -195,6 +196,7 @@ func runGenCfgCommand(cmd *cobra.Command, args []string) {
   "google_cx": "",
   "bing_api_key": "",
   "brave_api_key": "",
+  "api_key": "",
   "max_results": 10,
   "default_engine": "",
   "listen_addr": "localhost:8087",
@@ -232,8 +234,12 @@ func startHTTPServer(config *server.Config) {
 		mux.Handle("/mcp", httpServer)
 	}
 
-	// Wrap with logging middleware
-	handler := loggingMiddleware(logger, mux)
+	// Wrap with API key auth and logging middleware
+	var handler http.Handler = mux
+	if config.APIKey != "" {
+		handler = apiKeyAuthMiddleware(config.APIKey, handler, logger)
+	}
+	handler = loggingMiddleware(logger, handler)
 
 	// Print endpoints
 	httpEndpoint := config.ListenAddr
@@ -295,6 +301,36 @@ func loggingMiddleware(logger *slog.Logger, next http.Handler) http.Handler {
 			"duration", time.Since(start).String(),
 			"client", r.RemoteAddr,
 		)
+	})
+}
+
+// apiKeyAuthMiddleware validates X-API-Key header or Authorization: Bearer header
+func apiKeyAuthMiddleware(validAPIKey string, next http.Handler, logger *slog.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		clientAPIKey := r.Header.Get("X-API-Key")
+		if clientAPIKey == "" {
+			authHeader := r.Header.Get("Authorization")
+			if strings.HasPrefix(authHeader, "Bearer ") {
+				clientAPIKey = strings.TrimPrefix(authHeader, "Bearer ")
+			}
+		}
+
+		if subtle.ConstantTimeCompare([]byte(clientAPIKey), []byte(validAPIKey)) != 1 {
+			if logger != nil {
+				logger.Warn("authentication failed",
+					"reason", "invalid key",
+					"client", r.RemoteAddr,
+					"path", r.URL.Path,
+				)
+			}
+			w.Header().Set("WWW-Authenticate", `Bearer realm="API", error="invalid_token"`)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"error": "Unauthorized", "message": "API key required. Use X-API-Key header or Authorization: Bearer <key>"}`))
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	})
 }
 
