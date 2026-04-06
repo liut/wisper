@@ -22,11 +22,6 @@ type WebFetchParams struct {
 	Raw        bool   `json:"raw,omitempty" jsonschema:"If true, returns the raw HTML including <script> and <style> blocks (default: false)"`
 }
 
-// webSearchOutput defines the output structure for web_search tool
-type webSearchOutput struct {
-	Text string `json:"text"`
-}
-
 // webFetchOutput defines the output structure for web_fetch tool
 type webFetchOutput struct {
 	Text string `json:"text"`

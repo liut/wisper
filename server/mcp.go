@@ -42,9 +42,8 @@ func (s *WebServer) CreateMcpServer() *server.MCPServer {
 }
 
 // handleWebSearchHandler is the handler for web_search tool
-func (s *WebServer) handleWebSearchHandler(ctx context.Context, request mcp.CallToolRequest, args WebSearchParams) (webSearchOutput, error) {
-	result, err := s.handleWebSearch(ctx, args)
-	return *result, err
+func (s *WebServer) handleWebSearchHandler(ctx context.Context, request mcp.CallToolRequest, args WebSearchParams) (*WebSearchResponse, error) {
+	return s.handleWebSearch(ctx, args)
 }
 
 // withInputSchemaWithEnums creates input schema with enum constraints for specific fields.

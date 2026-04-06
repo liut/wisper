@@ -2,9 +2,7 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"slices"
 	"time"
@@ -13,7 +11,7 @@ import (
 )
 
 // handleWebSearch handles the unified web_search tool
-func (s *WebServer) handleWebSearch(ctx context.Context, params WebSearchParams) (*webSearchOutput, error) {
+func (s *WebServer) handleWebSearch(ctx context.Context, params WebSearchParams) (*WebSearchResponse, error) {
 	if params.Query == "" {
 		return nil, errors.New("query is required")
 	}
@@ -40,14 +38,7 @@ func (s *WebServer) handleWebSearch(ctx context.Context, params WebSearchParams)
 	slog.Info("search done", "count", rawCount, "engines", enginesToUse)
 
 	// Format response
-	response := s.formatResponse(params, queries, enginesUsed, allResults, rawCount)
-
-	responseJSON, err := json.Marshal(response)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal response: %w", err)
-	}
-
-	return &webSearchOutput{Text: string(responseJSON)}, nil
+	return s.formatResponse(params, queries, enginesUsed, allResults, rawCount), nil
 }
 
 // resolveEngines determines which engines to use based on params
@@ -148,36 +139,35 @@ func (s *WebServer) shouldUseEngine(engineName, queryType string, includeAcademi
 }
 
 // formatResponse creates the unified response structure
-func (s *WebServer) formatResponse(params WebSearchParams, queries []searchQuery, enginesUsed []string, results []engine.SearchResult, rawCount int) map[string]any {
-	// Build search queries list
+func (s *WebServer) formatResponse(params WebSearchParams, queries []searchQuery, enginesUsed []string, results []engine.SearchResult, rawCount int) *WebSearchResponse {
 	searchQueries := make([]string, len(queries))
 	for i, q := range queries {
 		searchQueries[i] = q.Query
 	}
 
-	searchSummary := map[string]any{
-		"original_query":       params.Query,
-		"search_queries":       searchQueries,
-		"engines_used":         enginesUsed,
-		"search_depth":         params.SearchDepth,
-		"total_raw_results":    rawCount,
-		"total_unique_results": len(results),
+	searchSummary := SearchSummary{
+		OriginalQuery:      params.Query,
+		SearchQueries:      searchQueries,
+		EnginesUsed:        enginesUsed,
+		SearchDepth:        params.SearchDepth,
+		TotalRawResults:    rawCount,
+		TotalUniqueResults: len(results),
 	}
 
-	var formattedResults []map[string]any
+	formattedResults := make([]SearchResult, len(results))
 	for i, result := range results {
-		formattedResults = append(formattedResults, map[string]any{
-			"index":   i + 1,
-			"title":   result.Title,
-			"link":    result.Link,
-			"snippet": result.Content,
-		})
+		formattedResults[i] = SearchResult{
+			Index:   i + 1,
+			Title:   result.Title,
+			Link:    result.Link,
+			Snippet: result.Content,
+		}
 	}
 
-	return map[string]any{
-		"summary":       searchSummary,
-		"total_results": len(results),
-		"results":       formattedResults,
-		"search_time":   time.Now().Format(time.RFC3339),
+	return &WebSearchResponse{
+		Summary:      searchSummary,
+		TotalResults: len(results),
+		Results:      formattedResults,
+		SearchTime:   time.Now().Format(time.RFC3339),
 	}
 }
