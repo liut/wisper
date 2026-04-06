@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -55,6 +56,7 @@ func (s *SearchXNGEngine) Search(ctx context.Context, query SearchQuery) ([]Sear
 	}
 
 	searchURL := fmt.Sprintf("%s/search?%s", s.baseURL, params.Encode())
+	slog.Debug("searchxng search request", "url", searchURL)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, searchURL, nil)
 	if err != nil {

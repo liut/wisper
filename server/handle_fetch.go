@@ -12,8 +12,8 @@ import (
 
 	nurl "net/url"
 
-	htmd "github.com/JohannesKaufmann/html-to-markdown"
 	readeck "codeberg.org/readeck/go-readability/v2"
+	htmd "github.com/JohannesKaufmann/html-to-markdown"
 )
 
 const defaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -103,6 +103,8 @@ func extractContentFromHTML(htmlContent, uri string) string {
 
 // fetchURL fetches web page content, supports HTML to Markdown conversion
 func fetchURL(ctx context.Context, urlStr, userAgent string, raw bool) (content, prefix string, err error) {
+	slog.Debug("fetching URL", "url", urlStr, "raw", raw)
+
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
@@ -129,6 +131,7 @@ func fetchURL(ctx context.Context, urlStr, userAgent string, raw bool) (content,
 		return
 	}
 	content = string(b)
+	slog.Debug("fetch completed", "url", urlStr, "status", resp.StatusCode, "content_length", len(content))
 
 	contentType := resp.Header.Get("content-type")
 	pagePreview := content

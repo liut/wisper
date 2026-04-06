@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
@@ -13,8 +14,8 @@ import (
 
 // BraveEngine implements search using Brave Search API
 type BraveEngine struct {
-	apiKey  string
-	client  *http.Client
+	apiKey string
+	client *http.Client
 }
 
 // NewBraveEngine creates a new Brave engine instance
@@ -48,6 +49,7 @@ func (b *BraveEngine) Search(ctx context.Context, query SearchQuery) ([]SearchRe
 	params.Set("count", fmt.Sprintf("%d", query.MaxResults))
 
 	searchURL := fmt.Sprintf("https://api.search.brave.com/res/v1/web/search?%s", params.Encode())
+	slog.Debug("brave search request", "url", searchURL)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, searchURL, nil)
 	if err != nil {

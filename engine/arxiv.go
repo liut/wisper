@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -61,6 +62,7 @@ func (a *ArxivEngine) Search(ctx context.Context, query SearchQuery) ([]SearchRe
 		searchQuery,
 		query.MaxResults,
 	)
+	slog.Debug("arxiv search request", "url", searchURL)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, searchURL, nil)
 	if err != nil {

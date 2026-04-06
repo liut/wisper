@@ -37,6 +37,7 @@ func (s *WebServer) handleWebSearch(ctx context.Context, params WebSearchParams)
 	if params.AutoDeduplicate {
 		allResults = s.removeDuplicates(allResults)
 	}
+	slog.Info("search done", "count", rawCount, "engines", enginesToUse)
 
 	// Format response
 	response := s.formatResponse(params, queries, enginesUsed, allResults, rawCount)
@@ -155,11 +156,11 @@ func (s *WebServer) formatResponse(params WebSearchParams, queries []searchQuery
 	}
 
 	searchSummary := map[string]any{
-		"original_query":     params.Query,
-		"search_queries":     searchQueries,
-		"engines_used":       enginesUsed,
-		"search_depth":       params.SearchDepth,
-		"total_raw_results":  rawCount,
+		"original_query":       params.Query,
+		"search_queries":       searchQueries,
+		"engines_used":         enginesUsed,
+		"search_depth":         params.SearchDepth,
+		"total_raw_results":    rawCount,
 		"total_unique_results": len(results),
 	}
 

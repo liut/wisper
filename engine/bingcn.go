@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -37,6 +38,7 @@ func (b *BingCNEngine) Search(ctx context.Context, query SearchQuery) ([]SearchR
 	params.Set("setlang", "zh-CN")
 
 	searchURL := fmt.Sprintf("https://api.bing.com/qsonhs.aspx?%s", params.Encode())
+	slog.Debug("bingcn search request", "url", searchURL)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, searchURL, nil)
 	if err != nil {
@@ -59,9 +61,9 @@ func (b *BingCNEngine) Search(ctx context.Context, query SearchQuery) ([]SearchR
 	var result struct {
 		AS struct {
 			Results []struct {
-				Title   string `json:"Title"`
-				Url     string `json:"Url"`
-				Desc    string `json:"Desc"`
+				Title string `json:"Title"`
+				Url   string `json:"Url"`
+				Desc  string `json:"Desc"`
 			} `json:"Results"`
 		} `json:"AS"`
 	}

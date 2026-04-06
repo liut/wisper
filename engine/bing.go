@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -43,6 +44,7 @@ func (b *BingEngine) Search(ctx context.Context, query SearchQuery) ([]SearchRes
 	params.Set("count", fmt.Sprintf("%d", query.MaxResults))
 
 	searchURL := fmt.Sprintf("https://api.bing.microsoft.com/v7.0/search?%s", params.Encode())
+	slog.Debug("bing search request", "url", searchURL)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, searchURL, nil)
 	if err != nil {
@@ -65,9 +67,9 @@ func (b *BingEngine) Search(ctx context.Context, query SearchQuery) ([]SearchRes
 	var result struct {
 		WebPages struct {
 			Value []struct {
-				Name         string `json:"name"`
-				URL          string `json:"url"`
-				Snippet      string `json:"snippet"`
+				Name    string `json:"name"`
+				URL     string `json:"url"`
+				Snippet string `json:"snippet"`
 			} `json:"value"`
 		} `json:"webPages"`
 	}

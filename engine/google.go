@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -51,6 +52,7 @@ func (g *GoogleEngine) Search(ctx context.Context, query SearchQuery) ([]SearchR
 	}
 
 	searchURL := fmt.Sprintf("https://www.googleapis.com/customsearch/v1?%s", params.Encode())
+	slog.Debug("google search request", "url", searchURL)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, searchURL, nil)
 	if err != nil {
@@ -70,8 +72,8 @@ func (g *GoogleEngine) Search(ctx context.Context, query SearchQuery) ([]SearchR
 
 	var result struct {
 		Items []struct {
-			Title string `json:"title"`
-			Link  string `json:"link"`
+			Title   string `json:"title"`
+			Link    string `json:"link"`
 			Snippet string `json:"snippet"`
 		} `json:"items"`
 	}
