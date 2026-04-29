@@ -21,6 +21,7 @@ type Config struct {
 	URIPrefix     string `mapstructure:"uri_prefix" envconfig:"URI_PREFIX"`         // URI prefix for HTTP endpoints
 	LogLevel      string `mapstructure:"log_level" envconfig:"LOG_LEVEL"`           // Log level: debug, info, warn, error (default: info)
 	APIKey        string `mapstructure:"api_key" envconfig:"API_KEY"`               // API Key for HTTP endpoint authentication
+	DisableSSE    bool   `mapstructure:"disable_sse" envconfig:"DISABLE_SSE"`       // Disable SSE endpoint (default: false)
 }
 
 // WebServer represents the MCP web search server
@@ -78,15 +79,6 @@ func NewWebServer(config Config) *WebServer {
 		defaultEngine: defaultEngine,
 		maxResults:    maxResults,
 	}
-}
-
-// MustNewWebServer creates a new web search server with error handling
-func MustNewWebServer(searchXNGURL string, maxResults int) *WebServer {
-	config := Config{
-		SearchXNGURL: searchXNGURL,
-		MaxResults:   maxResults,
-	}
-	return NewWebServer(config)
 }
 
 // searchQuery represents a search query with parameters

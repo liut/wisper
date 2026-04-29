@@ -1,14 +1,17 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/liut/webpawm/server"
 	mcpserver "github.com/mark3labs/mcp-go/server"
@@ -201,8 +204,9 @@ func runGenCfgCommand(cmd *cobra.Command, args []string) {
   "max_results": 10,
   "default_engine": "",
   "listen_addr": "localhost:8087",
-  "uri_prefix": "",
-  "log_level": "info"
+  "uri_prefix": "/mcp",
+  "log_level": "info",
+  "disable_sse": false
 }
 `
 
@@ -221,17 +225,28 @@ func startHTTPServer(config *server.Config) {
 	srv := server.NewWebServer(*config)
 	mcpServer := srv.CreateMcpServer()
 
-	// Create HTTP/SSE server
-	sseSvr := mcpserver.NewSSEServer(mcpServer)
+	uriPrefix := strings.TrimSuffix(config.URIPrefix, "/")
+
+	// Create StreamableHTTP server (always enabled)
 	streamSvr := mcpserver.NewStreamableHTTPServer(mcpServer)
 
 	// Use ServeMux to handle different paths
 	mux := http.NewServeMux()
-	uriPrefix := strings.TrimSuffix(config.URIPrefix, "/")
 
 	// HTTP mode endpoint: prefix/mcp
-	mux.Handle(uriPrefix+"/mcp", streamSvr)
-	mux.Handle(uriPrefix+"/mcp/sse", sseSvr)
+	mux.Handle(uriPrefix+"/stream", streamSvr)
+	if len(uriPrefix) == 0 { // old path
+		mux.Handle(uriPrefix+"/mcp", streamSvr)
+	}
+
+	// SSE endpoint (optional)
+	if !config.DisableSSE {
+		sseSvr := mcpserver.NewSSEServer(mcpServer,
+			mcpserver.WithStaticBasePath(uriPrefix),
+		)
+		mux.Handle(uriPrefix+"/sse", sseSvr.SSEHandler())
+		mux.Handle(uriPrefix+"/message", sseSvr.MessageHandler())
+	}
 
 	// Wrap with API key auth, security headers and logging middleware
 	var handler http.Handler = mux
@@ -249,7 +264,10 @@ func startHTTPServer(config *server.Config) {
 
 	fmt.Fprintf(os.Stderr, "Starting Webpawm MCP server (HTTP and SSE mode)...\n")
 	fmt.Fprintf(os.Stderr, "  Listen: %s\n", config.ListenAddr)
-	fmt.Fprintf(os.Stderr, "  HTTP endpoint: http://%s/mcp\n", httpEndpoint)
+	fmt.Fprintf(os.Stderr, "  Endpoint: http://%s/stream\n", httpEndpoint)
+	if !config.DisableSSE {
+		fmt.Fprintf(os.Stderr, "  Endpoint(SSE): http://%s/sse\n", httpEndpoint)
+	}
 	fmt.Fprintf(os.Stderr, "  Log Level: %s\n", config.LogLevel)
 	fmt.Fprintf(os.Stderr, "  SearXNG: %s\n", config.SearchXNGURL)
 	googleEnabled := config.GoogleAPIKey != "" && config.GoogleCX != ""
@@ -258,9 +276,31 @@ func startHTTPServer(config *server.Config) {
 	fmt.Fprintf(os.Stderr, "  Brave: %v\n", config.BraveAPIKey != "")
 	fmt.Fprintf(os.Stderr, "  Max Results: %d\n", config.MaxResults)
 
-	if err := http.ListenAndServe(config.ListenAddr, handler); err != nil {
-		log.Fatalf("Server error: %v", err)
+	httpServer := &http.Server{
+		Addr:    config.ListenAddr,
+		Handler: handler,
 	}
+
+	// Start server in a goroutine
+	go func() {
+		if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
+			slog.Error("Server failed", "err", err)
+			os.Exit(1)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+
+	slog.Info("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+	defer cancel()
+	if err := httpServer.Shutdown(ctx); err != nil {
+		slog.Error("Server forced to shutdown", "err", err)
+	}
+	slog.Info("Server stopped")
 }
 
 func runStdioServer() {
@@ -275,6 +315,6 @@ func startStdioServer(srv *server.WebServer) {
 	fmt.Printf("Starting Webpawm MCP server (stdio mode)...\n")
 
 	if err := mcpserver.ServeStdio(mcpServer); err != nil {
-		log.Printf("Server error: %v", err)
+		slog.Error("Server failed", "err", err)
 	}
 }
