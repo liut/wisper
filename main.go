@@ -27,8 +27,8 @@ func main() {
 	rootCmd := &cobra.Command{
 		Use:   "webpawm",
 		Short: "MCP web search server",
-		Long: `Wisper is an MCP server that provides web search capabilities.
-It supports multiple search engines including SearXNG, Google, Bing, and Arxiv.`,
+		Long: `An MCP server that provides web search and web fetch capabilities.
+It supports web search across multiple engines (SearXNG, Google, Bing, Brave, Arxiv) and web page content fetching with HTML to Markdown conversion.`,
 		Version: version,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Default: run stdio mode
@@ -133,8 +133,6 @@ func getConfig() *server.Config {
 }
 
 func runWebCommand(cmd *cobra.Command, args []string) {
-	// Bind flag to viper
-	_ = viper.BindPFlag("listen_addr", cmd.Flags().Lookup("listen"))
 
 	config := getConfig()
 	// Ensure URIPrefix and LogLevel are loaded from viper (in case they were set via env var)
@@ -224,18 +222,16 @@ func startHTTPServer(config *server.Config) {
 	mcpServer := srv.CreateMcpServer()
 
 	// Create HTTP/SSE server
-	httpServer := mcpserver.NewStreamableHTTPServer(mcpServer)
+	sseSvr := mcpserver.NewSSEServer(mcpServer)
+	streamSvr := mcpserver.NewStreamableHTTPServer(mcpServer)
 
 	// Use ServeMux to handle different paths
 	mux := http.NewServeMux()
-	uriPrefix := config.URIPrefix
+	uriPrefix := strings.TrimSuffix(config.URIPrefix, "/")
 
 	// HTTP mode endpoint: prefix/mcp
-	if uriPrefix != "" {
-		mux.Handle(uriPrefix+"/mcp", httpServer)
-	} else {
-		mux.Handle("/mcp", httpServer)
-	}
+	mux.Handle(uriPrefix+"/mcp", streamSvr)
+	mux.Handle(uriPrefix+"/mcp/sse", sseSvr)
 
 	// Wrap with API key auth, security headers and logging middleware
 	var handler http.Handler = mux
@@ -251,16 +247,16 @@ func startHTTPServer(config *server.Config) {
 		httpEndpoint = config.ListenAddr + uriPrefix
 	}
 
-	fmt.Printf("Starting Webpawm MCP server (HTTP and SSE mode)...\n")
-	fmt.Printf("  Listen: %s\n", config.ListenAddr)
-	fmt.Printf("  HTTP endpoint: http://%s/mcp\n", httpEndpoint)
-	fmt.Printf("  Log Level: %s\n", config.LogLevel)
-	fmt.Printf("  SearXNG: %s\n", config.SearchXNGURL)
+	fmt.Fprintf(os.Stderr, "Starting Webpawm MCP server (HTTP and SSE mode)...\n")
+	fmt.Fprintf(os.Stderr, "  Listen: %s\n", config.ListenAddr)
+	fmt.Fprintf(os.Stderr, "  HTTP endpoint: http://%s/mcp\n", httpEndpoint)
+	fmt.Fprintf(os.Stderr, "  Log Level: %s\n", config.LogLevel)
+	fmt.Fprintf(os.Stderr, "  SearXNG: %s\n", config.SearchXNGURL)
 	googleEnabled := config.GoogleAPIKey != "" && config.GoogleCX != ""
-	fmt.Printf("  Google: %v\n", googleEnabled)
-	fmt.Printf("  Bing: %v\n", config.BingAPIKey != "")
-	fmt.Printf("  Brave: %v\n", config.BraveAPIKey != "")
-	fmt.Printf("  Max Results: %d\n", config.MaxResults)
+	fmt.Fprintf(os.Stderr, "  Google: %v\n", googleEnabled)
+	fmt.Fprintf(os.Stderr, "  Bing: %v\n", config.BingAPIKey != "")
+	fmt.Fprintf(os.Stderr, "  Brave: %v\n", config.BraveAPIKey != "")
+	fmt.Fprintf(os.Stderr, "  Max Results: %d\n", config.MaxResults)
 
 	if err := http.ListenAndServe(config.ListenAddr, handler); err != nil {
 		log.Fatalf("Server error: %v", err)
