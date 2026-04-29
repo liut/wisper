@@ -1,0 +1,28 @@
+[Unit]
+Description=Webpawm MCP Web Search Server (HTTP + SSE)
+Documentation=https://github.com/liut/webpawm
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+#Environment="https_proxy=http://127.0.0.1:1080"
+
+ExecStart=/usr/local/bin/webpawm web --listen localhost:8087
+
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.config/webpawm
+
+StandardOutput=append:%h/.local/share/webpawm/webpawm.log
+StandardError=append:%h/.local/share/webpawm/webpawm.log
+
+[Install]
+WantedBy=default.target
