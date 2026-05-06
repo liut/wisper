@@ -43,7 +43,7 @@ func (s *WebServer) CreateMcpServer() *server.MCPServer {
 
 // handleWebSearchHandler is the handler for web_search tool
 func (s *WebServer) handleWebSearchHandler(ctx context.Context, request mcp.CallToolRequest, args WebSearchParams) (*WebSearchResponse, error) {
-	return s.handleWebSearch(ctx, args)
+	return s.HandleWebSearch(ctx, args)
 }
 
 // withInputSchemaWithEnums creates input schema with enum constraints for specific fields.
@@ -77,5 +77,5 @@ func withInputSchemaWithEnums[T any](enumOverrides map[string][]string) mcp.Tool
 
 // handleWebFetchHandler is the handler for web_fetch tool
 func (s *WebServer) handleWebFetchHandler(ctx context.Context, request mcp.CallToolRequest, args WebFetchParams) (*WebFetchResponse, error) {
-	return s.handleWebFetch(ctx, args)
+	return s.HandleWebFetch(ctx, args)
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -84,9 +85,41 @@ It supports web search across multiple engines (SearXNG, Google, Bing, Brave, Ar
 	}
 	genCfgCmd.Flags().StringP("output", "o", "", "Output path (default: ~/.config/webpawm/config.json)")
 
+	// search subcommand
+	searchCmd := &cobra.Command{
+		Use:   "search [query]",
+		Short: "Search the web and output JSON",
+		Long:  "Search the web using configured engines and output results as JSON to stdout.",
+		Args:  cobra.ExactArgs(1),
+		Run:   runSearchCommand,
+	}
+	searchCmd.Flags().StringP("engine", "e", "", "Search engine to use")
+	searchCmd.Flags().StringSlice("engines", nil, "Multiple engines (comma-separated)")
+	searchCmd.Flags().IntP("max-results", "n", 0, "Max results (default from config)")
+	searchCmd.Flags().StringP("language", "l", "", "Language code (e.g., 'en', 'zh')")
+	searchCmd.Flags().String("arxiv-category", "", "Arxiv category (e.g., 'cs.AI')")
+	searchCmd.Flags().StringP("depth", "d", "normal", "Search depth: quick/normal/deep")
+	searchCmd.Flags().Bool("academic", false, "Include academic papers from Arxiv")
+	searchCmd.Flags().Bool("no-expand", false, "Disable auto query expansion")
+	searchCmd.Flags().Bool("no-dedup", false, "Disable auto deduplication")
+
+	// fetch subcommand
+	fetchCmd := &cobra.Command{
+		Use:   "fetch [url]",
+		Short: "Fetch a website and output JSON",
+		Long:  "Fetch a website URL and output its content as JSON (Markdown by default) to stdout.",
+		Args:  cobra.ExactArgs(1),
+		Run:   runFetchCommand,
+	}
+	fetchCmd.Flags().IntP("max-length", "n", 5000, "Max characters to return")
+	fetchCmd.Flags().IntP("start-index", "s", 0, "Start content from this character index")
+	fetchCmd.Flags().BoolP("raw", "r", false, "Return raw HTML instead of Markdown")
+
 	rootCmd.AddCommand(webCmd)
 	rootCmd.AddCommand(stdCmd)
 	rootCmd.AddCommand(genCfgCmd)
+	rootCmd.AddCommand(searchCmd)
+	rootCmd.AddCommand(fetchCmd)
 
 	// Execute
 	if err := rootCmd.Execute(); err != nil {
@@ -233,6 +266,65 @@ func runGenCfgCommand(cmd *cobra.Command, args []string) {
 	fmt.Printf("Config file created: %s\n", outputPath)
 }
 
+func runSearchCommand(cmd *cobra.Command, args []string) {
+	config := getConfig()
+	srv := server.NewWebServer(*config)
+
+	params := server.WebSearchParams{
+		Query: args[0],
+	}
+
+	// Apply flags to params
+	params.Engine, _ = cmd.Flags().GetString("engine")
+	params.Engines, _ = cmd.Flags().GetStringSlice("engines")
+	params.MaxResults, _ = cmd.Flags().GetInt("max-results")
+	params.Language, _ = cmd.Flags().GetString("language")
+	params.ArxivCategory, _ = cmd.Flags().GetString("arxiv-category")
+	params.SearchDepth, _ = cmd.Flags().GetString("depth")
+	params.IncludeAcademic, _ = cmd.Flags().GetBool("academic")
+	noExpand, _ := cmd.Flags().GetBool("no-expand")
+	params.AutoQueryExpand = !noExpand
+	noDedup, _ := cmd.Flags().GetBool("no-dedup")
+	params.AutoDeduplicate = !noDedup
+
+	resp, err := srv.HandleWebSearch(context.Background(), params)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	writeJSONToStdout(resp)
+}
+
+func runFetchCommand(cmd *cobra.Command, args []string) {
+	config := getConfig()
+	srv := server.NewWebServer(*config)
+
+	params := server.WebFetchParams{
+		URL: args[0],
+	}
+
+	// Apply flags to params
+	params.MaxLength, _ = cmd.Flags().GetInt("max-length")
+	params.StartIndex, _ = cmd.Flags().GetInt("start-index")
+	params.Raw, _ = cmd.Flags().GetBool("raw")
+
+	resp, err := srv.HandleWebFetch(context.Background(), params)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	writeJSONToStdout(resp)
+}
+
+func writeJSONToStdout(v any) {
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(v); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: failed to encode response: %v\n", err)
+		os.Exit(1)
+	}
+}
+
 func startHTTPServer(config *server.Config) {
 	// Setup logger based on LogLevel
 	logger := server.SetupLogger(config.LogLevel)
@@ -263,6 +355,13 @@ func startHTTPServer(config *server.Config) {
 		mux.Handle(uriPrefix+"/message", sseSvr.MessageHandler())
 	}
 
+	// REST API endpoints (plain JSON, non-MCP protocol)
+	restHandler := server.NewRESTHandler(srv)
+	mux.HandleFunc("GET /api/health", restHandler.HandleHealth)
+	mux.HandleFunc("GET /api/engines", restHandler.HandleEngines)
+	mux.HandleFunc("POST /api/search", restHandler.HandleSearch)
+	mux.HandleFunc("POST /api/fetch", restHandler.HandleFetch)
+
 	// Wrap with API key auth, security headers and logging middleware
 	var handler http.Handler = mux
 	if config.APIKey != "" {
@@ -283,6 +382,11 @@ func startHTTPServer(config *server.Config) {
 	if !config.DisableSSE {
 		fmt.Fprintf(os.Stderr, "  Endpoint(SSE): http://%s/sse\n", httpEndpoint)
 	}
+	fmt.Fprintf(os.Stderr, "  REST API:\n")
+	fmt.Fprintf(os.Stderr, "    GET  http://%s/api/health\n", config.ListenAddr)
+	fmt.Fprintf(os.Stderr, "    GET  http://%s/api/engines\n", config.ListenAddr)
+	fmt.Fprintf(os.Stderr, "    POST http://%s/api/search\n", config.ListenAddr)
+	fmt.Fprintf(os.Stderr, "    POST http://%s/api/fetch\n", config.ListenAddr)
 	fmt.Fprintf(os.Stderr, "  Log Level: %s\n", config.LogLevel)
 	fmt.Fprintf(os.Stderr, "  SearXNG: %s\n", config.SearchXNGURL)
 	googleEnabled := config.GoogleAPIKey != "" && config.GoogleCX != ""
@@ -292,8 +396,11 @@ func startHTTPServer(config *server.Config) {
 	fmt.Fprintf(os.Stderr, "  Max Results: %d\n", config.MaxResults)
 
 	httpServer := &http.Server{
-		Addr:    config.ListenAddr,
-		Handler: handler,
+		Addr:         config.ListenAddr,
+		Handler:      handler,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	// Start server in a goroutine

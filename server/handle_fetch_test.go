@@ -8,10 +8,21 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
+// disableFetchValidation disables SSRF URL validation for tests using local HTTP servers.
+func disableFetchValidation() { validateFetchURL = func(_ string) error { return nil } }
+
+func testWebServer() *WebServer {
+	return &WebServer{
+		httpClient: &http.Client{Timeout: 30 * time.Second},
+	}
+}
+
 func TestHandleWebFetch_URLValidation(t *testing.T) {
-	s := &WebServer{}
+	disableFetchValidation()
+	s := testWebServer()
 
 	tests := []struct {
 		name    string
@@ -27,7 +38,7 @@ func TestHandleWebFetch_URLValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := s.handleWebFetch(context.Background(), tt.params)
+			_, err := s.HandleWebFetch(context.Background(), tt.params)
 			if err == nil && tt.wantErr != nil {
 				t.Errorf("expected error %v, got nil", tt.wantErr)
 			}
@@ -39,7 +50,8 @@ func TestHandleWebFetch_URLValidation(t *testing.T) {
 }
 
 func TestHandleWebFetch_MaxLengthValidation(t *testing.T) {
-	s := &WebServer{}
+	disableFetchValidation()
+	s := testWebServer()
 
 	tests := []struct {
 		name    string
@@ -65,7 +77,7 @@ func TestHandleWebFetch_MaxLengthValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := s.handleWebFetch(context.Background(), tt.params)
+			_, err := s.HandleWebFetch(context.Background(), tt.params)
 			if tt.wantErr != nil {
 				if err == nil {
 					t.Errorf("expected error %v, got nil", tt.wantErr)
@@ -78,7 +90,8 @@ func TestHandleWebFetch_MaxLengthValidation(t *testing.T) {
 }
 
 func TestHandleWebFetch_StartIndexValidation(t *testing.T) {
-	s := &WebServer{}
+	disableFetchValidation()
+	s := testWebServer()
 
 	tests := []struct {
 		name    string
@@ -94,7 +107,7 @@ func TestHandleWebFetch_StartIndexValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := s.handleWebFetch(context.Background(), tt.params)
+			_, err := s.HandleWebFetch(context.Background(), tt.params)
 			if err == nil {
 				t.Errorf("expected error %v, got nil", tt.wantErr)
 			} else if err.Error() != tt.wantErr.Error() {
@@ -105,7 +118,8 @@ func TestHandleWebFetch_StartIndexValidation(t *testing.T) {
 }
 
 func TestHandleWebFetch_SuccessfulFetch(t *testing.T) {
-	s := &WebServer{}
+	disableFetchValidation()
+	s := testWebServer()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
@@ -119,7 +133,7 @@ func TestHandleWebFetch_SuccessfulFetch(t *testing.T) {
 		MaxLength: 5000,
 	}
 
-	result, err := s.handleWebFetch(context.Background(), params)
+	result, err := s.HandleWebFetch(context.Background(), params)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -134,7 +148,8 @@ func TestHandleWebFetch_SuccessfulFetch(t *testing.T) {
 }
 
 func TestHandleWebFetch_Truncation(t *testing.T) {
-	s := &WebServer{}
+	disableFetchValidation()
+	s := testWebServer()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
@@ -148,7 +163,7 @@ func TestHandleWebFetch_Truncation(t *testing.T) {
 		MaxLength: 10,
 	}
 
-	result, err := s.handleWebFetch(context.Background(), params)
+	result, err := s.HandleWebFetch(context.Background(), params)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -159,7 +174,8 @@ func TestHandleWebFetch_Truncation(t *testing.T) {
 }
 
 func TestHandleWebFetch_StartIndexBeyondContent(t *testing.T) {
-	s := &WebServer{}
+	disableFetchValidation()
+	s := testWebServer()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
@@ -174,7 +190,7 @@ func TestHandleWebFetch_StartIndexBeyondContent(t *testing.T) {
 		StartIndex: 100,
 	}
 
-	result, err := s.handleWebFetch(context.Background(), params)
+	result, err := s.HandleWebFetch(context.Background(), params)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -185,7 +201,8 @@ func TestHandleWebFetch_StartIndexBeyondContent(t *testing.T) {
 }
 
 func TestHandleWebFetch_HTTPError(t *testing.T) {
-	s := &WebServer{}
+	disableFetchValidation()
+	s := testWebServer()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
@@ -196,7 +213,7 @@ func TestHandleWebFetch_HTTPError(t *testing.T) {
 		URL: server.URL,
 	}
 
-	result, err := s.handleWebFetch(context.Background(), params)
+	result, err := s.HandleWebFetch(context.Background(), params)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -207,7 +224,8 @@ func TestHandleWebFetch_HTTPError(t *testing.T) {
 }
 
 func TestHandleWebFetch_RawHTML(t *testing.T) {
-	s := &WebServer{}
+	disableFetchValidation()
+	s := testWebServer()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
@@ -221,7 +239,7 @@ func TestHandleWebFetch_RawHTML(t *testing.T) {
 		Raw: true,
 	}
 
-	result, err := s.handleWebFetch(context.Background(), params)
+	result, err := s.HandleWebFetch(context.Background(), params)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -232,7 +250,8 @@ func TestHandleWebFetch_RawHTML(t *testing.T) {
 }
 
 func TestHandleWebFetch_ConvertedHTML(t *testing.T) {
-	s := &WebServer{}
+	disableFetchValidation()
+	s := testWebServer()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
@@ -246,7 +265,7 @@ func TestHandleWebFetch_ConvertedHTML(t *testing.T) {
 		Raw: false,
 	}
 
-	result, err := s.handleWebFetch(context.Background(), params)
+	result, err := s.HandleWebFetch(context.Background(), params)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

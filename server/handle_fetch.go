@@ -2,13 +2,12 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"strings"
-	"time"
 
 	nurl "net/url"
 
@@ -20,9 +19,13 @@ const defaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/
 
 var converter = htmd.NewConverter("", true, nil)
 
-func (s *WebServer) handleWebFetch(ctx context.Context, params WebFetchParams) (*WebFetchResponse, error) {
+func (s *WebServer) HandleWebFetch(ctx context.Context, params WebFetchParams) (*WebFetchResponse, error) {
 	if params.URL == "" {
-		return nil, errors.New("url is required")
+		return nil, newValidationError("url is required")
+	}
+
+	if err := validateFetchURL(params.URL); err != nil {
+		return nil, err
 	}
 
 	maxLength := params.MaxLength
@@ -32,13 +35,13 @@ func (s *WebServer) handleWebFetch(ctx context.Context, params WebFetchParams) (
 
 	startIndex := params.StartIndex
 	if maxLength <= 0 || maxLength >= 1000000 {
-		return nil, errors.New("max_length must be between 1 and 999999")
+		return nil, newValidationError("max_length must be between 1 and 999999")
 	}
 	if startIndex < 0 {
-		return nil, errors.New("start_index must be >= 0")
+		return nil, newValidationError("start_index must be >= 0")
 	}
 
-	content, prefix, err := fetchURL(ctx, params.URL, defaultUserAgent, params.Raw)
+	content, prefix, err := fetchURL(ctx, s.httpClient, params.URL, defaultUserAgent, params.Raw, maxLength, startIndex)
 	if err != nil {
 		slog.Warn("fetch failed", "url", params.URL, "error", err)
 		return &WebFetchResponse{URL: params.URL, Error: fmt.Sprintf("Error fetching URL: %v", err)}, nil
@@ -116,13 +119,38 @@ func extractContentFromHTML(htmlContent, uri string) string {
 	return markdown
 }
 
-// fetchURL fetches web page content, supports HTML to Markdown conversion
-func fetchURL(ctx context.Context, urlStr, userAgent string, raw bool) (content, prefix string, err error) {
-	slog.Debug("fetching URL", "url", urlStr, "raw", raw)
-
-	client := &http.Client{
-		Timeout: 30 * time.Second,
+// validateFetchURL validates that a URL is safe to fetch (prevents SSRF).
+// Overridable in tests.
+var validateFetchURL = func(rawURL string) error {
+	u, err := nurl.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
 	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return newValidationError("only http and https schemes are allowed")
+	}
+	if u.Host == "" {
+		return newValidationError("URL must include a host")
+	}
+	host, _, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		host = u.Host
+	}
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return fmt.Errorf("failed to resolve host: %w", err)
+	}
+	for _, ip := range ips {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+			return newValidationError("internal/private IP addresses are not allowed")
+		}
+	}
+	return nil
+}
+
+// fetchURL fetches web page content, supports HTML to Markdown conversion.
+func fetchURL(ctx context.Context, client *http.Client, urlStr, userAgent string, raw bool, maxLength, startIndex int) (content, prefix string, err error) {
+	slog.Debug("fetching URL", "url", urlStr, "raw", raw)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", urlStr, nil)
 	if err != nil {
@@ -141,7 +169,8 @@ func fetchURL(ctx context.Context, urlStr, userAgent string, raw bool) (content,
 		return
 	}
 
-	b, err := io.ReadAll(resp.Body)
+	readLimit := int64(startIndex + maxLength + 1) // +1 to detect truncation
+	b, err := io.ReadAll(io.LimitReader(resp.Body, readLimit))
 	if err != nil {
 		return
 	}

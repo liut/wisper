@@ -1,7 +1,9 @@
 package server
 
 import (
+	"net/http"
 	"slices"
+	"time"
 
 	"github.com/liut/webpawm/engine"
 )
@@ -29,6 +31,7 @@ type WebServer struct {
 	engines       map[string]engine.Engine
 	defaultEngine string
 	maxResults    int
+	httpClient    *http.Client
 }
 
 // NewWebServer creates a new web search server
@@ -78,6 +81,7 @@ func NewWebServer(config Config) *WebServer {
 		engines:       engines,
 		defaultEngine: defaultEngine,
 		maxResults:    maxResults,
+		httpClient:    &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
@@ -140,6 +144,16 @@ func (s *WebServer) removeDuplicates(results []engine.SearchResult) []engine.Sea
 	}
 
 	return unique
+}
+
+// AvailableEngines returns a list of available search engine names.
+func (s *WebServer) AvailableEngines() []string {
+	names := make([]string, 0, len(s.engines))
+	for name := range s.engines {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return names
 }
 
 // getAvailableEngines returns a list of available search engine names

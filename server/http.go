@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/subtle"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -58,9 +59,7 @@ func APIKeyAuthMiddleware(validAPIKey string, next http.Handler, logger *slog.Lo
 				)
 			}
 			w.Header().Set("WWW-Authenticate", `Bearer realm="API", error="invalid_token"`)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			_, _ = w.Write([]byte(`{"error": "Unauthorized", "message": "API key required. Use X-API-Key header or Authorization: Bearer <key>"}`))
+			writeJSONError(w, http.StatusUnauthorized, "Unauthorized", "API key required. Use X-API-Key header or Authorization: Bearer <key>")
 			return
 		}
 
@@ -82,4 +81,19 @@ func (rw *responseWriter) Flush() {
 	if flusher, ok := rw.ResponseWriter.(http.Flusher); ok {
 		flusher.Flush()
 	}
+}
+
+func writeJSONError(w http.ResponseWriter, statusCode int, error, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"error":   error,
+		"message": message,
+	})
+}
+
+func writeJSONResponse(w http.ResponseWriter, statusCode int, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(data)
 }

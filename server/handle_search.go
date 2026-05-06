@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"slices"
 	"time"
@@ -10,15 +9,19 @@ import (
 	"github.com/liut/webpawm/engine"
 )
 
-// handleWebSearch handles the unified web_search tool
-func (s *WebServer) handleWebSearch(ctx context.Context, params WebSearchParams) (*WebSearchResponse, error) {
+// HandleWebSearch handles the unified web_search tool
+func (s *WebServer) HandleWebSearch(ctx context.Context, params WebSearchParams) (*WebSearchResponse, error) {
 	if params.Query == "" {
-		return nil, errors.New("query is required")
+		return nil, newValidationError("query is required")
 	}
 
-	// Set defaults for optional boolean params
-	if params.SearchDepth == "" {
+	// Validate and set defaults for search depth
+	switch params.SearchDepth {
+	case "":
 		params.SearchDepth = "normal"
+	case "quick", "normal", "deep":
+	default:
+		return nil, newValidationError("search_depth must be one of: quick, normal, deep")
 	}
 
 	// Resolve engines to use
