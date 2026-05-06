@@ -1,7 +1,7 @@
 ---
 title: feat: Add CLI subcommands and REST API endpoints for search/fetch
 type: feat
-status: active
+status: completed
 date: 2026-05-07
 ---
 
@@ -165,24 +165,24 @@ REST 调用链:
 
 ### Functional Requirements
 
-- [ ] `webpawm search "query"` 输出 JSON 搜索结果到 stdout，exit 0
-- [ ] `webpawm search` 无参数时输出错误到 stderr，exit 1
-- [ ] `webpawm fetch "url"` 输出 JSON 抓取结果到 stdout，exit 0
-- [ ] `webpawm fetch` 无参数时输出错误到 stderr，exit 1
-- [ ] 所有 search/fetch 参数可通过 CLI flag 指定
-- [ ] `POST /api/search` 接受 JSON body，返回 JSON 搜索结果
-- [ ] `POST /api/fetch` 接受 JSON body，返回 JSON 抓取结果
-- [ ] REST 端点与 MCP 端点共享同一中间件（日志、安全头、API Key 认证）
-- [ ] REST 端点不在 `uri_prefix` 下，固定使用 `/api/` 前缀
-- [ ] REST 请求体超过 1MB 返回 413
-- [ ] REST 非 JSON Content-Type 返回 415
-- [ ] REST 参数校验失败返回 400 + JSON error body
+- [x] `webpawm search "query"` 输出 JSON 搜索结果到 stdout，exit 0
+- [x] `webpawm search` 无参数时输出错误到 stderr，exit 1
+- [x] `webpawm fetch "url"` 输出 JSON 抓取结果到 stdout，exit 0
+- [x] `webpawm fetch` 无参数时输出错误到 stderr，exit 1
+- [x] 所有 search/fetch 参数可通过 CLI flag 指定
+- [x] `POST /api/search` 接受 JSON body，返回 JSON 搜索结果
+- [x] `POST /api/fetch` 接受 JSON body，返回 JSON 抓取结果
+- [x] REST 端点与 MCP 端点共享同一中间件（日志、安全头、API Key 认证）
+- [x] REST 端点不在 `uri_prefix` 下，固定使用 `/api/` 前缀
+- [x] REST 请求体超过 1MB 返回 413
+- [x] REST 非 JSON Content-Type 返回 415
+- [x] REST 参数校验失败返回 400 + JSON error body
 
 ### Non-Functional Requirements
 
-- [ ] 不引入新的外部依赖
-- [ ] 现有 MCP 功能不受影响（回归测试通过）
-- [ ] CLI 和 REST 复用相同的 handler 逻辑，无代码重复
+- [x] 不引入新的外部依赖
+- [x] 现有 MCP 功能不受影响（回归测试通过）
+- [x] CLI 和 REST 复用相同的 handler 逻辑，无代码重复
 
 ## Dependencies & Risks
 
